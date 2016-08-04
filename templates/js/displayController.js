@@ -1,14 +1,15 @@
 app.controller("displayController", function($scope,$http,$filter) {
 	
 	function init(){
+		$scope.conList = [];
 		$http.get("/api/").success(function(response){
-			$scope.conList = [];
-			console.log(response);
+			
+			//console.log(response);
 
 			response.forEach(function(v,i){
 			  $scope.conList.push(JSON.parse(v))
 			})
-			$scope.conList = JSON.parse(response);
+			//$scope.conList = JSON.parse(response);
 			$scope.cancelSaveUpdate();
 		})
 	
@@ -29,9 +30,9 @@ app.controller("displayController", function($scope,$http,$filter) {
 	$scope.addNew = function(data){
 		$scope.showList = false;
 		if(data){
-			$scope.name = data.name;
-			$scope.number = data.num;
-			$scope.id= data.id;
+			$scope.name = data.Name;
+			$scope.number = data.Num;
+			$scope.id= data.Id;
 		}
 	}
 	$scope.deleteData = function(){
@@ -39,12 +40,12 @@ app.controller("displayController", function($scope,$http,$filter) {
 		var idList = [];
 		angular.forEach($scope.conList, function(contact){
 			if(contact.check){
-				idList.push(contact.id);
+				idList.push(contact.Id);
 			}
 		});
 		var dataTo = {
 				mode : "del",
-				list : idList
+				idlist : idList
 		}
 		
 		var request = {
@@ -55,8 +56,9 @@ app.controller("displayController", function($scope,$http,$filter) {
 				 },
 				 data: JSON.stringify(dataTo)
 			}
+		$scope.conList = [];
 		$http(request).success(function(response){
-			init();
+			setTimeout(function(){init()}, 500);
 		})
 		
 	}
@@ -71,12 +73,16 @@ app.controller("displayController", function($scope,$http,$filter) {
 			return;
 		}else{
 			//check duplicate number
-			angular.forEach($scope.conList, function(contact){
-				if(contact.num==$scope.number){
-					alert("Number already exists as " + contact.name);
-					return;
+		
+			for(i=0; i< $scope.conList.length; i++){
+				if($scope.conList[i].Num==$scope.number){
+					alert("Number already exists for " + $scope.conList[i].Name);
+
+					return false;
 				}
-			})
+			}
+
+
 		}
 		var data = {
 			mode : "save",
@@ -95,7 +101,7 @@ app.controller("displayController", function($scope,$http,$filter) {
 				 data: JSON.stringify(data)
 			}
 		$http(request).success(function(response){
-			init();
+			setTimeout(function(){init()}, 500);
 		})
 		
 	}
@@ -104,6 +110,7 @@ app.controller("displayController", function($scope,$http,$filter) {
 		$scope.name = '';
 		$scope.number = '';
 		$scope.id='';
+		$scope.isDelete = false;
 	}
 	
 	

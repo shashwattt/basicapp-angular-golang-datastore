@@ -8,18 +8,22 @@ import (
     	"io/ioutil"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
+	"strconv"
 	
 	
 )
 type coreData struct {
 	Id 		string
 	Name	string
-	Num 	string 
+	Num 	string
 }
 
 type test_struct struct {
 	Data coreData	
 	Mode string
+	Idlist []string
+
+
 }
 
 //Handle all requests
@@ -36,9 +40,9 @@ type test_struct struct {
 func APIHandler(response http.ResponseWriter, request *http.Request){
 
     //set mime type to JSON
+
     response.Header().Set("Content-type", "application/json")
     log.Println("In API Handler")
-
 	err := request.ParseForm()
 	if err != nil {
 		http.Error(response, fmt.Sprintf("error parsing url %v", err), 500)
@@ -49,6 +53,8 @@ func APIHandler(response http.ResponseWriter, request *http.Request){
 
     //making context to be used by any case
     context := appengine.NewContext(request);
+ 	requestbody, _ := ioutil.ReadAll(request.Body)
+	log.Println("response Body:", string(requestbody))
     switch request.Method {
         case "GET":
         	log.Println("In GET")
@@ -56,13 +62,15 @@ func APIHandler(response http.ResponseWriter, request *http.Request){
         	var contactList []coreData
         	
         	q := datastore.NewQuery("Contacts");
-        	_, errr := q.GetAll(context, &contactList)
+        	keys, errr := q.GetAll(context, &contactList)
         	if errr == nil{
 	        	i := 0
 	        	for _, val := range contactList{
 	        		log.Println("Inside loop")
 	        		log.Println("Name From retrieve: ", val.Name)
-	        		tomarshal := &coreData{Id: val.Id,Name:val.Name, Num: val.Num}
+	        		keyy := keys[i].IntID()
+	        		log.Println(keyy)
+	        		tomarshal := &coreData{Id: strconv.FormatInt(keyy,10),Name:val.Name, Num: val.Num}
                	 	b, err := json.Marshal(tomarshal)
                 	if err != nil {
                     	fmt.Println(err)
@@ -84,14 +92,12 @@ func APIHandler(response http.ResponseWriter, request *http.Request){
            	log.Println("In POST")
            	//x := request.FormValue("mode")
            	//fmt.Println(x)
-         	responsebody, _ := ioutil.ReadAll(request.Body)
-    		log.Println("response Body:", string(responsebody))
-    		// var jsonData = []byte(string(responsebody))
+    		// var jsonData = []byte(string(requestbody))
 
            	var dat test_struct
            	//var f interface{}
-    		err := json.Unmarshal(responsebody, &dat)
-    		if err == nil{
+    		err := json.Unmarshal(requestbody, &dat)
+    		if err == nil && dat.Mode=="save"{
     			log.Println("Afetr unmarshal")
     			log.Println("Mode: ", dat.Mode)
     			log.Println("Name: ", dat.Data.Name)
@@ -100,7 +106,14 @@ func APIHandler(response http.ResponseWriter, request *http.Request){
     			
 				
 				log.Println("context created")
+				
 				userkey := datastore.NewIncompleteKey(context, "Contacts", nil)
+				if dat.Data.Id != "" {
+					int64key,_  := strconv.ParseInt(dat.Data.Id, 10, 64)
+    				userkey = datastore.NewKey(context, "Contacts", "", int64key, nil)
+				}
+
+
 				log.Println("incom key created")
 				entry := coreData{
 					Name 	: dat.Data.Name,
@@ -123,14 +136,35 @@ func APIHandler(response http.ResponseWriter, request *http.Request){
     			// }else{
     			// 	fmt.Println("Put success")
     			// }
+    		}else if err == nil && dat.Mode=="del"{
+    				log.Println("In DELETE by POST")
+    				log.Println(dat.Idlist)
+
+    				for i,ids := range dat.Idlist {
+    					log.Println(ids,"--",i)
+    					int64key,_  := strconv.ParseInt(ids, 10, 64)
+    					key := datastore.NewKey(context, "Contacts", "", int64key, nil)
+    					if datastore.Delete(context,key) == nil{
+    						log.Println("deleted successfully")
+    					}
+
+    				}
+
+
     		}else{
     			log.Println(err)
     		}
   
         case "PUT":
            log.Println("In PUT")
+
+
         case "DELETE":
             log.Println("In DELETE")
+
+
+
+            //key := datastore.NewKey(ctx, "Employee", "", 0, nil)
 
         default:
     }
@@ -148,13 +182,13 @@ func APIHandler(response http.ResponseWriter, request *http.Request){
 
 // func putData(request *http.Request){
 
-// 	// responsebody, _ := ioutil.ReadAll(request.Body)
-// 	// fmt.Println("response Body:", string(responsebody))
-// 	// // var jsonData = []byte(string(responsebody))
+// 	// requestbody, _ := ioutil.ReadAll(request.Body)
+// 	// fmt.Println("response Body:", string(requestbody))
+// 	// // var jsonData = []byte(string(requestbody))
 
 //  //   	var dat test_struct
 //  //   	//var f interface{}
-// 	// json.Unmarshal(responsebody, &dat)
+// 	// json.Unmarshal(requestbody, &dat)
 
 	
 // 	// return err
